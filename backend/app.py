@@ -1,23 +1,27 @@
-from flask import Flask, render_template, jsonify
-import os
-import yaml
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from subprocess import run
 
-app = Flask(__name__)
+app = FastAPI()
 
-ARCHIVE_DIR = "/opt/yaml_archives/"
+class EmailList(BaseModel):
+    name: str
+    description: str
+    owner: str
 
-@app.route("/")
-def index():
-    files = os.listdir(ARCHIVE_DIR)
-    return render_template("index.html", files=files)
+@app.post("/api/create_list/")
+async def create_list(email_list: EmailList):
+    try:
+        run(["mailman", "create", email_list.name, email_list.owner], check=True)
+        return {"status": "success", "message": f"List {email_list.name} created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/archive/<filename>")
-def view_archive(filename):
-    file_path = os.path.join(ARCHIVE_DIR, filename)
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return jsonify(data)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+@app.get("/api/lists/")
+async def list_lists():
+    try:
+        result = run(["mailman", "lists"], capture_output=True, text=True, check=True)
+        return {"status": "success", "lists": result.stdout.splitlines()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
