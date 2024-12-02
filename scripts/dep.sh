@@ -88,10 +88,12 @@ EOF
 SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
 echo "export SECRET_KEY=$SECRET_KEY" | "$SU" tee -a /etc/environment
 
+
+
 "$SU" python3 manage.py migrate
 "$SU" python3 manage.py shell <<EOF
 from django.contrib.auth.models import User
 User.objects.create_superuser('admin', 'admin@example.com', 'your_password')
 EOF
-
+$SU python3 manage.py createsuperuser
 "$SU" python3 manage.py runserver 0.0.0.0:8000
